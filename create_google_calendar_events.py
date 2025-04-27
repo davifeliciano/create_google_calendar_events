@@ -1,12 +1,19 @@
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
+from datetime import datetime
+from curses_calendar import curses_main
+import curses
 import pickle
 import os.path
 import argparse
+import calendar
 
 # Se modificarmos as SCOPES, deletar o arquivo token.pickle.
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+TOKEN_FILE = os.path.join(SCRIPT_DIR, "token.pickle")
+CREDENTIALS_FILE = os.path.join(SCRIPT_DIR, "credentials.json")
 
 
 def valid_month(value):
@@ -44,15 +51,17 @@ def parse_args():
         "--days",
         nargs="+",
         type=int,
-        required=True,
-        help="Dias do mês separados por espaços",
+        default=[],
+        metavar="DD",
+        help="Dias do mês separados por espaços. Caso não sejam informados, um widget de calendário em curses será exibido para selecionar os dias.",
     )
 
     parser.add_argument(
         "-m",
         "--month",
         type=valid_month,
-        required=True,
+        default=datetime.now().month,
+        metavar="MM",
         help="Número do mês (1-12)",
     )
 
@@ -60,7 +69,8 @@ def parse_args():
         "-y",
         "--year",
         type=valid_year,
-        required=True,
+        default=datetime.now().year,
+        metavar="YYYY",
         help="Ano (1990-2999)",
     )
 
@@ -85,8 +95,8 @@ def get_credentials():
 
     # O arquivo token.pickle armazena os tokens de acesso e atualização do usuário,
     # e é criado automaticamente quando o fluxo de autorização é concluído pela primeira vez.
-    if os.path.exists("token.pickle"):
-        with open("token.pickle", "rb") as token:
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "rb") as token:
             creds = pickle.load(token)
 
     # Se não houver credenciais (disponíveis), deixe o usuário logar.
@@ -94,11 +104,11 @@ def get_credentials():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
 
         # Salve as credenciais para a próxima execução
-        with open("token.pickle", "wb") as token:
+        with open(TOKEN_FILE, "wb") as token:
             pickle.dump(creds, token)
 
     return creds
@@ -107,6 +117,7 @@ def get_credentials():
 def get_calendar_id(service, calendar_name):
     """Obtém o id de uma agenda pelo nome."""
     page_token = None
+
     while True:
         calendar_list = service.calendarList().list(pageToken=page_token).execute()
 
@@ -133,7 +144,28 @@ def main():
         print(f"Agenda `{args.calendar}` não encontrada.")
         return
 
-    for day in args.days:
+    days = args.days
+
+    if len(days) == 0:
+        calendar.setfirstweekday(calendar.SUNDAY)
+        calendar_matrix = calendar.monthcalendar(args.year, args.month)
+        selected_days_positions = set()
+
+        curses.wrapper(
+            curses_main, args.year, args.month, calendar_matrix, selected_days_positions
+        )
+
+        for selected_day_pos in selected_days_positions:
+            week_idx, day_idx = selected_day_pos
+            days.append(calendar_matrix[week_idx][day_idx])
+
+        days.sort()
+
+    if len(days) == 0:
+        print("Nenhum dia selecionado")
+        return
+
+    for day in days:
         event = {
             "summary": args.name,
             "start": {
