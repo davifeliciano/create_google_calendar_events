@@ -83,3 +83,9 @@ $ python create_google_calendar_events.py \
          --name "Evento de Dia Inteiro" \
          --calendar Trabalho
 ```
+
+Para gerar um executável em `./dist/` com nome customizado:
+
+```bash
+pyinstaller --onefile create_google_calendar_events.py -n batch_create_gc_events
+```
