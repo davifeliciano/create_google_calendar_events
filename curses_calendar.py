@@ -5,6 +5,7 @@ from enum import IntEnum
 CALENDAR_SPACING = 2
 DAY_DIGITS = 2
 DAYS_IN_WEEK = 7
+CALENDAR_HEIGHT = 11
 CALENDAR_WIDTH = 6 * CALENDAR_SPACING + DAYS_IN_WEEK * DAY_DIGITS
 WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
 
@@ -110,11 +111,18 @@ def draw_calendar_days(
 
 
 def draw_help_text(window):
-    window.addstr(1, 0, "Navigate across days with")
-    window.addstr(2, 0, "the arrow keys and toggle")
-    window.addstr(3, 0, "selection with space")
-    window.addstr(5, 0, "Once you're, done hit Enter")
-    window.addstr(6, 0, "To abort, hit 'q' or F3")
+    window.addstr(1, 0, "Arrows: Navigate across days")
+    window.addstr(2, 0, "F7/Page Up: Previous month")
+    window.addstr(3, 0, "F8/Page Down: Next Month")
+    window.addstr(4, 0, "F3/q: Exit")
+    window.addstr(5, 0, "Enter: Confirm")
+
+    window.addstr(
+        7, 0, "You can only select days in", curses.color_pair(ColorPair.ERROR)
+    )
+    window.addstr(
+        8, 0, "a single month per execution", curses.color_pair(ColorPair.ERROR)
+    )
 
 
 def move_cursor_left_until_day(
@@ -176,20 +184,37 @@ def toggle_day_selection(
         selected_days_positions.add(cursor_position)
 
 
+def get_previous_month(year: int, month: int) -> tuple[int, int]:
+    if month == 1:
+        return year - 1, 12
+    else:
+        return year, month - 1
+
+
+def get_next_month(year: int, month: int) -> tuple[int, int]:
+    if month == 12:
+        return year + 1, 1
+    else:
+        return year, month + 1
+
+
 def curses_main(
     stdscr: curses.window,
-    year: int,
-    month: int,
-    calendar_matrix: list[list[int]],
-    selected_days_positions: set[tuple[int, int]],
-):
+    init_year: int,
+    init_month: int,
+) -> tuple[int, int, list[int]]:
     curses.curs_set(0)
     init_colors()
     stdscr.clear()
 
-    calendar_window = curses.newwin(len(calendar_matrix) + 4, CALENDAR_WIDTH + 2, 0, 0)
+    year, month = init_year, init_month
+
+    calendar.setfirstweekday(calendar.SUNDAY)
+    calendar_matrix = calendar.monthcalendar(year, month)
+    selected_days_positions = set()
+
+    calendar_window = curses.newwin(CALENDAR_HEIGHT, CALENDAR_WIDTH + 2, 0, 0)
     calendar_window.keypad(True)
-    calendar_window.box()
 
     cursor_position = move_cursor_right_until_day(calendar_matrix, (0, 0))
 
@@ -198,7 +223,7 @@ def curses_main(
         calendar_window, calendar_matrix, selected_days_positions, cursor_position
     )
 
-    text_window = curses.newwin(len(calendar_matrix) + 4, 30, 0, CALENDAR_WIDTH + 4)
+    text_window = curses.newwin(CALENDAR_HEIGHT, 30, 0, CALENDAR_WIDTH + 4)
 
     draw_help_text(text_window)
 
@@ -234,6 +259,22 @@ def curses_main(
                 calendar_matrix, cursor_position
             )
 
+        if key in (curses.KEY_F7, curses.KEY_PPAGE):
+            year, month = get_previous_month(year, month)
+            calendar_matrix = calendar.monthcalendar(year, month)
+            cursor_position = move_cursor_right_until_day(calendar_matrix, (0, 0))
+            selected_days_positions.clear()
+            calendar_window.clear()
+            draw_calendar(calendar_window, year, month)
+
+        if key in (curses.KEY_F8, curses.KEY_NPAGE):
+            year, month = get_next_month(year, month)
+            calendar_matrix = calendar.monthcalendar(year, month)
+            cursor_position = move_cursor_right_until_day(calendar_matrix, (0, 0))
+            selected_days_positions.clear()
+            calendar_window.clear()
+            draw_calendar(calendar_window, year, month)
+
         if key == ord(" "):
             toggle_day_selection(selected_days_positions, cursor_position)
 
@@ -243,3 +284,12 @@ def curses_main(
 
         calendar_window.noutrefresh()
         curses.doupdate()
+
+    return (
+        year,
+        month,
+        sorted(
+            calendar_matrix[week_idx][day_idx]
+            for week_idx, day_idx in selected_days_positions
+        ),
+    )

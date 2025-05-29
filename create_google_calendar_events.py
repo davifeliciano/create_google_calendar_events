@@ -150,21 +150,11 @@ def main():
         return
 
     if len(days) == 0:
-        calendar.setfirstweekday(calendar.SUNDAY)
-        calendar_matrix = calendar.monthcalendar(args.year, args.month)
-        selected_days_positions = set()
-
-        curses.wrapper(
+        year, month, days = curses.wrapper(
             curses_calendar_main,
-            args.year,
-            args.month,
-            calendar_matrix,
-            selected_days_positions,
+            init_year=args.year,
+            init_month=args.month,
         )
-
-        for selected_day_pos in selected_days_positions:
-            week_idx, day_idx = selected_day_pos
-            days.append(calendar_matrix[week_idx][day_idx])
 
         days.sort()
 
