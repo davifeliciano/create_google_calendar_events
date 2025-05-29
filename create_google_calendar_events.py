@@ -2,7 +2,8 @@ from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from datetime import datetime
-from curses_calendar import curses_main
+from curses_calendar import curses_main as curses_calendar_main
+from curses_prompt import curses_main as curses_prompt_main
 import curses
 import pickle
 import os.path
@@ -74,15 +75,13 @@ def parse_args():
         help="Ano (1990-2999)",
     )
 
-    parser.add_argument(
-        "-n", "--name", type=str, required=True, help="Nome dos eventos"
-    )
+    parser.add_argument("-n", "--name", type=str, default="", help="Nome dos eventos")
 
     parser.add_argument(
         "-c",
         "--calendar",
         type=str,
-        required=True,
+        default="",
         help="Nome da agenda do Google Calendar na qual os eventos serão criados",
     )
 
@@ -136,15 +135,19 @@ def get_calendar_id(service, calendar_name):
 def main():
     """Cria eventos de dia inteiro no Google Calendar em uma agenda específica."""
     args = parse_args()
-    creds = get_credentials()
-    service = build("calendar", "v3", credentials=creds)
-    calendar_id = get_calendar_id(service, args.calendar)
 
-    if not calendar_id:
-        print(f"Agenda `{args.calendar}` não encontrada.")
-        return
-
+    event_name = args.name
+    calendar_name = args.calendar
     days = args.days
+
+    if "" in (event_name, calendar_name):
+        event_name, calendar_name = curses.wrapper(
+            curses_prompt_main, event_name, calendar_name
+        )
+
+    if "" in (event_name, calendar_name):
+        print("Nome do evento e nome da agenda são obrigatórios.")
+        return
 
     if len(days) == 0:
         calendar.setfirstweekday(calendar.SUNDAY)
@@ -152,7 +155,11 @@ def main():
         selected_days_positions = set()
 
         curses.wrapper(
-            curses_main, args.year, args.month, calendar_matrix, selected_days_positions
+            curses_calendar_main,
+            args.year,
+            args.month,
+            calendar_matrix,
+            selected_days_positions,
         )
 
         for selected_day_pos in selected_days_positions:
@@ -165,9 +172,17 @@ def main():
         print("Nenhum dia selecionado")
         return
 
+    creds = get_credentials()
+    service = build("calendar", "v3", credentials=creds)
+    calendar_id = get_calendar_id(service, calendar_name)
+
+    if not calendar_id:
+        print(f"Agenda `{calendar_name}` não encontrada.")
+        return
+
     for day in days:
         event = {
-            "summary": args.name,
+            "summary": event_name,
             "start": {
                 "date": f"{args.year:04d}-{args.month:02d}-{day:02d}",
             },

@@ -209,11 +209,11 @@ def curses_main(
     while True:
         key = calendar_window.getch()
 
-        if key == ord("q") or key == ord("Q") or key == curses.KEY_F3:
+        if key in (ord("q"), ord("Q"), curses.KEY_F3):
             selected_days_positions.clear()
             break
 
-        if key == curses.KEY_ENTER or key == 10 or key == 13:
+        if key in (curses.KEY_ENTER, 10, 13):
             break
 
         if key == curses.KEY_RIGHT:
