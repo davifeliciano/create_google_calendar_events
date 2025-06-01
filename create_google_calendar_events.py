@@ -8,7 +8,6 @@ import curses
 import pickle
 import os.path
 import argparse
-import calendar
 
 # Se modificarmos as SCOPES, deletar o arquivo token.pickle.
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
@@ -41,6 +40,17 @@ def valid_year(value):
     return year_int
 
 
+def length_limited(limit, argname):
+    def checker(value):
+        if len(value) > limit:
+            raise argparse.ArgumentTypeError(
+                f"O argumento `{argname}` deve ter no máximo {limit} caracteres."
+            )
+        return value
+
+    return checker
+
+
 def parse_args():
     """Analisa os argumentos da linha de comando."""
     parser = argparse.ArgumentParser(
@@ -63,7 +73,7 @@ def parse_args():
         type=valid_month,
         default=datetime.now().month,
         metavar="MM",
-        help="Número do mês (1-12)",
+        help="Número do mês (1-12). Por padrão, o mês atual é usado. Corresponde ao mês inicial do widget de calendário, caso usado.",
     )
 
     parser.add_argument(
@@ -72,17 +82,23 @@ def parse_args():
         type=valid_year,
         default=datetime.now().year,
         metavar="YYYY",
-        help="Ano (1990-2999)",
+        help="Ano (1990-2999), Por padrão, o ano atual é usado. Corresponde ao ano inicial do widget de calendário, caso usado.",
     )
 
-    parser.add_argument("-n", "--name", type=str, default="", help="Nome dos eventos")
+    parser.add_argument(
+        "-n",
+        "--name",
+        type=length_limited(37, "name"),
+        default="",
+        help="Nome dos eventos. Caso não seja informado, um prompt em curses será exibido para digitar o nome desejado.",
+    )
 
     parser.add_argument(
         "-c",
         "--calendar",
-        type=str,
+        type=length_limited(37, "calendar"),
         default="",
-        help="Nome da agenda do Google Calendar na qual os eventos serão criados",
+        help="Nome da agenda do Google Calendar na qual os eventos serão criados. Caso não seja informado, um prompt em curses será exibido para digitar o calendário desejado.",
     )
 
     return parser.parse_args()
@@ -138,7 +154,6 @@ def main():
 
     event_name = args.name
     calendar_name = args.calendar
-    days = args.days
 
     if "" in (event_name, calendar_name):
         event_name, calendar_name = curses.wrapper(
@@ -147,19 +162,22 @@ def main():
 
     if "" in (event_name, calendar_name):
         print("Nome do evento e nome da agenda são obrigatórios.")
+        print("Tente novamente.")
         return
 
-    if len(days) == 0:
-        year, month, days = curses.wrapper(
+    days = args.days
+    dates = sorted(f"{args.year}-{args.month:02d}-{day:02d}" for day in days)
+
+    if len(dates) == 0:
+        dates = curses.wrapper(
             curses_calendar_main,
             init_year=args.year,
             init_month=args.month,
         )
 
-        days.sort()
-
-    if len(days) == 0:
-        print("Nenhum dia selecionado")
+    if len(dates) == 0:
+        print("Nenhum dia foi selecionado.")
+        print("Tente novamente.")
         return
 
     creds = get_credentials()
@@ -168,21 +186,23 @@ def main():
 
     if not calendar_id:
         print(f"Agenda `{calendar_name}` não encontrada.")
+        print("Cheque as agendas existentes no Google Calendar e tente novamente.")
         return
 
-    for day in days:
+    for date in dates:
         event = {
             "summary": event_name,
-            "start": {
-                "date": f"{args.year:04d}-{args.month:02d}-{day:02d}",
-            },
-            "end": {
-                "date": f"{args.year:04d}-{args.month:02d}-{day:02d}",
-            },
+            "start": {"date": date},
+            "end": {"date": date},
         }
 
         event = service.events().insert(calendarId=calendar_id, body=event).execute()
-        print(f'Evento criado: {event.get("htmlLink")}')
+
+        print("Evento criado:")
+        print(f"  Nome: {event.get('summary')}")
+        print(f"  Data: {event.get('start').get('date')}")
+        print(f"  Link: {event.get('htmlLink')}")
+        print()
 
 
 if __name__ == "__main__":
