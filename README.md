@@ -57,31 +57,29 @@ Google Calendar. Para isso, siga os passos abaixo:
 
 ## Como Utilizar a Ferramenta
 
-No diretório do projeto, com o ambiente virtual ativado:
-
 ```bash
 $ python create_google_calendar_events.py --help
-usage: create_google_calendar_events.py [-h] -d DAYS [DAYS ...] -m MONTH -y YEAR -n NAME -c CALENDAR
+usage: create_google_calendar_events.py [-h] [-d DD [DD ...]] [-m MM] [-y YYYY] [-n NAME]
+                                        [-c CALENDAR]
 
-Cria eventos de dia inteiro no Google Calendar em uma agenda específica nos dias do mês e ano informados.
+Cria eventos de dia inteiro no Google Calendar em uma agenda específica nos dias do mês e ano
+informados.
 
 options:
   -h, --help            show this help message and exit
-  -d DAYS [DAYS ...], --days DAYS [DAYS ...]
-                        Dias do mês separados por espaços
-  -m MONTH, --month MONTH
-                        Número do mês (1-12)
-  -y YEAR, --year YEAR  Ano (1990-2999)
-  -n NAME, --name NAME  Nome dos eventos
+  -d DD [DD ...], --days DD [DD ...]
+                        Dias do mês separados por espaços. Caso não sejam informados, um widget de
+                        calendário em curses será exibido para selecionar os dias.
+  -m MM, --month MM     Número do mês (1-12). Por padrão, o mês atual é usado. Corresponde ao mês
+                        inicial do widget de calendário, caso usado.
+  -y YYYY, --year YYYY  Ano (1990-2999), Por padrão, o ano atual é usado. Corresponde ao ano inicial
+                        do widget de calendário, caso usado.
+  -n NAME, --name NAME  Nome dos eventos. Caso não seja informado, um prompt em curses será exibido
+                        para digitar o nome desejado.
   -c CALENDAR, --calendar CALENDAR
-                        Nome da agenda do Google Calendar na qual os eventos serão criados
-
-$ python create_google_calendar_events.py \
-         --year 2025 \
-         --month 04 \
-         --days 01 02 03 10 11 12 \
-         --name "Evento de Dia Inteiro" \
-         --calendar Trabalho
+                        Nome da agenda do Google Calendar na qual os eventos serão criados. Caso não
+                        seja informado, um prompt em curses será exibido para digitar o calendário
+                        desejado.
 ```
 
 Para gerar um executável em `./dist/` com nome customizado:
