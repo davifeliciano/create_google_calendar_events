@@ -6,14 +6,15 @@ from curses_calendar import curses_main as curses_calendar_main
 from curses_prompt import curses_main as curses_prompt_main
 import curses
 import pickle
-import os.path
 import argparse
+import pathlib
 
 # Se modificarmos as SCOPES, deletar o arquivo token.pickle.
 SCOPES = ["https://www.googleapis.com/auth/calendar"]
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TOKEN_FILE = os.path.join(SCRIPT_DIR, "token.pickle")
-CREDENTIALS_FILE = os.path.join(SCRIPT_DIR, "credentials.json")
+SCRIPT_DIR = pathlib.Path.home().joinpath(".create_google_calendar_events")
+SCRIPT_DIR.mkdir(parents=True, exist_ok=True)
+TOKEN_FILE = SCRIPT_DIR.joinpath("token.pickle")
+CREDENTIALS_FILE = SCRIPT_DIR.joinpath("credentials.json")
 
 
 def valid_month(value):
@@ -104,29 +105,37 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_credentials_from_browser_login():
+    """Abre um navegador para autenticação do usuário e obtém as credenciais."""
+    flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+    creds = flow.run_local_server(port=0)
+
+    with open(TOKEN_FILE, "wb") as token:
+        pickle.dump(creds, token)
+
+    return creds
+
+
 def get_credentials():
     """Obtém credenciais do usuário."""
     creds = None
 
-    # O arquivo token.pickle armazena os tokens de acesso e atualização do usuário,
-    # e é criado automaticamente quando o fluxo de autorização é concluído pela primeira vez.
-    if os.path.exists(TOKEN_FILE):
+    if TOKEN_FILE.exists():
         with open(TOKEN_FILE, "rb") as token:
             creds = pickle.load(token)
 
-    # Se não houver credenciais (disponíveis), deixe o usuário logar.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
+    if creds and creds.valid:
+        return creds
+
+    if creds and creds.expired and creds.refresh_token:
+        try:
             creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
+        except Exception as e:
+            print("Erro no refresh do token de acesso.")
+            print("Excluíndo token.pickle para nova autenticação.")
+            TOKEN_FILE.unlink(missing_ok=True)
 
-        # Salve as credenciais para a próxima execução
-        with open(TOKEN_FILE, "wb") as token:
-            pickle.dump(creds, token)
-
-    return creds
+    return get_credentials_from_browser_login()
 
 
 def get_calendar_id(service, calendar_name):

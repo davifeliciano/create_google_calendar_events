@@ -46,7 +46,8 @@ Google Calendar. Para isso, siga os passos abaixo:
 3. Selecione `Aplicativo de Computador` como o tipo de aplicativo.
 4. Dê um nome ao seu aplicativo (por exemplo, "Create Google Calendar Events").
 5. Clique em `CRIAR` e na tela seguinte, clique em `BAIXAR JSON` para baixar o arquivo com as credenciais criadas.
-6. Mova ou copie o arquivo para o diretório da aplicação, renomeando-o para `credentials.json`.
+6. Crie o diretório `~/.create_google_calendar_events/` com `mkdir ~/.create_google_calendar_events/`.
+7. Mova ou copie o arquivo para o diretório criado, renomeando-o para `credentials.json`.
 
 ### Configure Usuários de Teste
 
