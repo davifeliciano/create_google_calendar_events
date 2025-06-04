@@ -26,6 +26,12 @@ Finalmente, instale as dependências com
 pip install -r requirements.txt
 ```
 
+ou, usando [uv](https://docs.astral.sh/uv/)
+
+```bash
+uv sync
+```
+
 ## Criando e Configurando Projeto no Google Cloud
 
 Para que a aplicação funcione, é necessário criar credenciais para a API do
@@ -83,8 +89,14 @@ options:
                         desejado.
 ```
 
-Para gerar um executável em `./dist/` com nome customizado:
+Para gerar um executável em `./dist/` com nome customizado
 
 ```bash
 pyinstaller --onefile create_google_calendar_events.py -n batch_create_gc_events
+```
+
+ou, usando [uv](https://docs.astral.sh/uv/)
+
+```bash
+uv run pyinstaller --onefile create_google_calendar_events.py -n batch_create_gc_events
 ```
