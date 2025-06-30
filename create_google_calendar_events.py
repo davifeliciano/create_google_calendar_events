@@ -160,9 +160,11 @@ def get_calendar_id(service, calendar_name):
 def main():
     """Cria eventos de dia inteiro no Google Calendar em uma agenda específica."""
     args = parse_args()
-
     event_name = args.name
     calendar_name = args.calendar
+
+    creds = get_credentials()
+    service = build("calendar", "v3", credentials=creds)
 
     if "" in (event_name, calendar_name):
         event_name, calendar_name = curses.wrapper(
@@ -189,8 +191,6 @@ def main():
         print("Tente novamente.")
         return
 
-    creds = get_credentials()
-    service = build("calendar", "v3", credentials=creds)
     calendar_id = get_calendar_id(service, calendar_name)
 
     if not calendar_id:
