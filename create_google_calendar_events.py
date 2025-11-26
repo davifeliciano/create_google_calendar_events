@@ -4,6 +4,7 @@ from google.auth.transport.requests import Request
 from datetime import datetime
 from curses_calendar import curses_main as curses_calendar_main
 from curses_prompt import curses_main as curses_prompt_main
+from utils import is_consecutive_dates
 import curses
 import pickle
 import argparse
@@ -102,6 +103,12 @@ def parse_args():
         help="Nome da agenda do Google Calendar na qual os eventos serão criados. Caso não seja informado, um prompt em curses será exibido para digitar o calendário desejado.",
     )
 
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Exibe os eventos que seriam criados, sem realmente criá-los no Google Calendar.",
+    )
+
     return parser.parse_args()
 
 
@@ -157,6 +164,30 @@ def get_calendar_id(service, calendar_name):
     return None
 
 
+def create_event(event_name, start_date, end_date, service, calendar_id):
+    event_body = {
+        "summary": event_name,
+        "start": {"date": start_date},
+        "end": {"date": end_date},
+    }
+
+    event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
+
+    print("Evento criado:")
+    print(f"  Nome: {event.get('summary')}")
+    print(f"  Data: {event.get('start').get('date')}")
+    print(f"  Link: {event.get('htmlLink')}")
+    print()
+
+
+def dry_run_create_event(event_name, start_date, end_date, service, calendar_id):
+    print("Evento criado (dry-run):")
+    print(f"  Nome: {event_name}")
+    print(f"  Data de Início: {start_date}")
+    print(f"  Data de Fim: {end_date}")
+    print()
+
+
 def main():
     """Cria eventos de dia inteiro no Google Calendar em uma agenda específica."""
     args = parse_args()
@@ -198,20 +229,27 @@ def main():
         print("Cheque as agendas existentes no Google Calendar e tente novamente.")
         return
 
-    for date in dates:
-        event = {
-            "summary": event_name,
-            "start": {"date": date},
-            "end": {"date": date},
-        }
+    creation_strategy = dry_run_create_event if args.dry_run else create_event
+    start_date_index = 0
+    end_date_index = 0
 
-        event = service.events().insert(calendarId=calendar_id, body=event).execute()
+    while start_date_index < len(dates):
+        if end_date_index + 1 != len(dates) and is_consecutive_dates(
+            dates[end_date_index], dates[end_date_index + 1]
+        ):
+            end_date_index += 1
+            continue
 
-        print("Evento criado:")
-        print(f"  Nome: {event.get('summary')}")
-        print(f"  Data: {event.get('start').get('date')}")
-        print(f"  Link: {event.get('htmlLink')}")
-        print()
+        creation_strategy(
+            event_name,
+            dates[start_date_index],
+            dates[end_date_index],
+            service,
+            calendar_id,
+        )
+
+        end_date_index += 1
+        start_date_index = end_date_index
 
 
 if __name__ == "__main__":
