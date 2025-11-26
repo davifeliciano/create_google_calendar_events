@@ -1,7 +1,7 @@
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-from datetime import datetime
+from datetime import datetime, timedelta
 from curses_calendar import curses_main as curses_calendar_main
 from curses_prompt import curses_main as curses_prompt_main
 from utils import is_consecutive_dates
@@ -165,26 +165,35 @@ def get_calendar_id(service, calendar_name):
 
 
 def create_event(event_name, start_date, end_date, service, calendar_id):
+    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+    end_date_obj += timedelta(days=1)
+    end_date_api = end_date_obj.strftime("%Y-%m-%d")
+
     event_body = {
         "summary": event_name,
         "start": {"date": start_date},
-        "end": {"date": end_date},
+        "end": {"date": end_date_api},
     }
 
     event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
 
     print("Evento criado:")
     print(f"  Nome: {event.get('summary')}")
-    print(f"  Data: {event.get('start').get('date')}")
+    print(f"  Data de Início: {event.get('start').get('date')}")
+    print(f"  Data de Fim  (Exclusiva): {event.get('end').get('date')}")
     print(f"  Link: {event.get('htmlLink')}")
     print()
 
 
 def dry_run_create_event(event_name, start_date, end_date, service, calendar_id):
+    end_date_obj = datetime.strptime(end_date, "%Y-%m-%d")
+    end_date_obj += timedelta(days=1)
+    end_date_api = end_date_obj.strftime("%Y-%m-%d")
+
     print("Evento criado (dry-run):")
     print(f"  Nome: {event_name}")
     print(f"  Data de Início: {start_date}")
-    print(f"  Data de Fim: {end_date}")
+    print(f"  Data de Fim (Exclusiva): {end_date_api}")
     print()
 
 
